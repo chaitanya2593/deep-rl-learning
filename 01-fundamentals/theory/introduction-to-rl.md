@@ -121,9 +121,9 @@ This example illustrates how a chatbot learns from user feedback over multiple c
 - **Stochastic Policy:** Samples actions from a probability distribution (e.g., `a ~ π(·|s)`)
 
 **Note:** In RL, both states (`s_t`) and policies are often **not deterministic**. A stochastic policy can help with:
-- Exploration (trying different actions to learn)
-- Handling uncertainty in the environment
-- Finding optimal mixed strategies (e.g., in game theory)
+- **Exploration:** Trying different actions to discover better strategies
+- **Modeling Stochastic Behavior:** Capturing uncertainty in the environment
+- **Finding Optimal Mixed Strategies:** e.g., in game theory and adversarial settings
 
 ---
 
@@ -166,7 +166,242 @@ Where:
 
 ---
 
-## Environment Dynamics
+## Discount Factor (γ)
+
+The **discount factor (γ)**, a number between 0 and 1, is crucial in RL for balancing immediate vs. long-term gains:
+
+**Mathematical Representation:**
+```
+Return = Σ_{t=0}^{T} γ^t * r_t
+```
+
+**Why We Need It:**
+- Reduces the value of future rewards exponentially
+- Ensures the total return stays mathematically finite (prevents infinite sums)
+- Reflects the intuition that immediate rewards are more certain and valuable
+
+**Interpretation:**
+- **γ closer to 0 (e.g., 0.1):** Agent is more **greedy**—cares mostly about recent/immediate rewards
+- **γ closer to 1 (e.g., 0.99):** Agent is more **farsighted**—values long-term rewards equally with immediate ones
+- **Typical choice:** γ = 0.99 (prioritizes long-term gains but not infinitely far in the future)
+
+---
+
+## Value Functions
+
+### **How Do We Know a Policy is Best?**
+
+We need a way to **evaluate** and **compare** policies. This is where **value functions** come in.
+
+### **Value Function: V(s)**
+
+The **value function** `V(s)` estimates the expected cumulative discounted reward starting from state `s` under a given policy π:
+
+```
+V^π(s) = E[Σ_{t=0}^{T} γ^t * r_t | S_0 = s, policy = π]
+```
+
+**Interpretation:** How "good" is state `s` if we follow policy π?
+
+### **Q-Value Function: Q(s, a)**
+
+The **Q-value function** `Q(s, a)` estimates the expected cumulative discounted reward from taking action `a` in state `s`, then following policy π:
+
+```
+Q^π(s, a) = E[Σ_{t=0}^{T} γ^t * r_t | S_0 = s, A_0 = a, policy = π]
+```
+
+**Interpretation:** How "good" is the action `a` in state `s`?
+
+**Relationship:** `V(s) = Σ_a π(a|s) * Q(s, a)` — the value of a state is the expected Q-value over all possible actions.
+
+**Using Q-Values for Policy Improvement:**
+- **Greedy Policy:** Always pick the action with the highest Q-value: `a* = argmax_a Q(s, a)`
+- **Epsilon-Greedy:** Pick the best action most of the time, but explore randomly occasionally
+
+---
+
+## RL Algorithms: Key Approaches
+
+### **🌱 Why So Many RL Algorithms?**
+
+Different RL algorithms are like different tools in a toolbox. You wouldn't use a hammer for every job — same with RL:
+
+- Some algorithms learn fast but are unstable.
+- Some are super stable but slow.
+- Some work well when actions are continuous (like steering a car).
+- Others work only when actions are discrete (like moving up/down/left/right).
+- Some need lots of data; some can work with very little.
+
+That's why we have many algorithms — each shines under different conditions.
+
+---
+
+### **1. Imitation Learning – "Monkey See, Monkey Do"**
+
+#### **Simple idea:**
+Teach the AI to copy an expert.
+
+#### **Imagine:**
+You show a robot how to stack blocks, and it learns by copying your moves.
+
+#### **How it works:**
+- Gather recordings of an expert (human or trained model).
+- The AI learns to imitate those moves.
+
+#### **Pros:**
+- Learns quickly because it doesn't explore on its own.
+
+#### **Cons:**
+- It can't get better than the teacher.
+- If the expert makes mistakes, the AI learns them too.
+
+---
+
+### **2. Policy Gradient Methods – "Learn the Best Way to Act Directly"**
+
+#### **Simple idea:**
+Instead of learning "how good each action is," the AI directly learns **how to act**.
+
+#### **Imagine:**
+Trying different ways of swinging your arm until you find a motion that throws a ball farthest. You tweak your movement a little each time.
+
+#### **How it works:**
+- Try a behavior → see reward → tweak the behavior.
+- Repeat this millions of times.
+
+#### **Pros:**
+- Great for continuous controls (robots, self-driving cars).
+- Can produce "smooth" or "randomized" behaviors naturally.
+
+#### **Cons:**
+- Needs lots of trials (sample inefficient).
+- Noisy learning — sometimes makes big mistakes.
+- Can settle for "good enough" instead of truly optimal.
+
+**Examples:** REINFORCE, PPO (Proximal Policy Optimization)
+
+---
+
+### **3. Value-Based Methods – "Score Each Action and Pick the Best"**
+
+#### **Simple idea:**
+The AI learns a *score* for every possible action in every situation.
+
+#### **Imagine:**
+A game where you learn that "jump now gives +10 points" and "don't jump gives +5." You choose the higher score.
+
+#### **How it works:**
+- Learn **Q(s, a)** = "How good is doing action **a** in state **s**?"
+- Then choose the best-scoring action.
+
+#### **Pros:**
+- Usually learns faster than policy gradients.
+- Can reuse old experience logs ("off-policy"), which speeds things up.
+
+#### **Cons:**
+- Doesn't work naturally with continuous actions (infinite possibilities).
+- Can give unstable training with neural networks (DQN).
+- Tends to overestimate values sometimes.
+
+**Examples:** Q-Learning, DQN (Deep Q-Networks), SARSA
+
+---
+
+### **4. Actor-Critic – "Two Brains Working Together"**
+
+#### **Simple idea:**
+You have:
+- **Actor** → decides what to do
+- **Critic** → judges how good that action was
+
+Just like a student guided by a coach.
+
+#### **How it works:**
+- Actor proposes an action
+- Critic evaluates it
+- Actor improves based on feedback
+- Critic also learns to evaluate better over time
+
+#### **Pros:**
+- More stable than pure policy gradients.
+- Good for continuous actions.
+- More sample efficient.
+
+#### **Cons:**
+- Two networks → more complex.
+- More hyperparameters to tune.
+
+**Examples:** A3C, TD3, SAC (Soft Actor-Critic)
+
+---
+
+### **5. Model-Based Methods – "Learn the Rules of the World, Then Plan"**
+
+#### **Simple idea:**
+Instead of learning only by trial-and-error, the AI tries to **understand how the world works**.
+
+#### **Imagine:**
+Before moving a chess piece, you imagine how the board will look afterward. That imagination is the "model."
+
+#### **How it works:**
+- Learn how the environment changes after each action.
+- Use this learned model to "think ahead" (planning).
+
+#### **Pros:**
+- Very sample efficient — less trial-and-error needed.
+- Can simulate many futures without interacting with the real world.
+- Useful for robotics, offline RL, and transfer learning.
+
+#### **Cons:**
+- Hard to learn an accurate world-model.
+- Small prediction errors can snowball.
+- More computation required.
+
+**Examples:** Dyna, MCTS (Monte Carlo Tree Search), MuZero
+
+---
+
+### **Quick Comparison: When to Use What?**
+
+| Situation | Best Choice |
+|-----------|-------------|
+| **Lots of data, continuous actions** | Policy Gradient or Actor-Critic |
+| **Limited data, continuous actions** | Actor-Critic or Model-Based |
+| **Discrete actions, fast learning needed** | Value-Based (Q-Learning, DQN) |
+| **Want to reuse past experience** | Value-Based (off-policy) or Actor-Critic |
+| **Need sample efficiency** | Model-Based or Actor-Critic |
+| **Want simplicity** | Value-Based or Policy Gradient |
+| **Starting from expert demo** | Imitation Learning → then Actor-Critic |
+
+---
+
+## Data Collection in RL
+
+How we collect data significantly impacts learning. Key considerations:
+
+### **Action Space Dimensionality**
+- **Discrete Action Space:** Finite number of actions (e.g., Left/Right/Up/Down). Easier for value-based methods.
+- **Continuous Action Space:** Infinite actions in a range (e.g., motor torques). Better suited for policy gradient and actor-critic methods.
+
+### **Data Collection Strategies**
+
+1. **On-Policy:** Collect data using the current policy being trained
+   - Only use data from the policy being improved
+   - Less sample efficient but easier to implement
+   - Example: REINFORCE, PPO
+
+2. **Off-Policy:** Collect data with one policy, learn another
+   - Reuse past data from old policies
+   - More sample efficient
+   - Example: Q-Learning, DQN, off-policy actor-critic
+
+### **Stability and Ease of Use**
+- **Stability:** Some algorithms (e.g., Q-Learning) can diverge or oscillate
+- **Ease of Use:** Actor-Critic methods are often easier to tune than pure policy gradients
+- **Trade-offs:** More stable often means more complex implementation
+
+
 
 ### **Markov Property**
 The future state depends **only on the current state and action**, not the entire history.
@@ -183,5 +418,3 @@ S_3 depends on (S_2, A_2)  [NOT on S_1, A_1, ...]
 This is the **Markov property**—the environment is memoryless beyond the current state.
 
 
-
-To Be Continued
